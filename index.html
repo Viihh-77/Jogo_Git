@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jogo de Tiro Simples</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: #1e1e1e;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        canvas {
+            background-color: #333;
+            border: 5px solid #fff;
+        }
+
+        #score {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 24px;
+            color: white;
+        }
+
+        .game-over {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 32px;
+            color: white;
+            text-align: center;
+            display: none;
+        }
+
+    </style>
+</head>
+<body>
+
+    <div id="score">Pontos: 0</div>
+    <div class="game-over" id="game-over">Game Over! Pressione F5 para jogar novamente.</div>
+    <canvas id="gameCanvas" width="800" height="600"></canvas>
+
+    <script>
+        const canvas = document.getElementById("gameCanvas");
+        const ctx = canvas.getContext("2d");
+
+        const playerWidth = 50;
+        const playerHeight = 50;
+        const bulletWidth = 5;
+        const bulletHeight = 15;
+        const enemyWidth = 50;
+        const enemyHeight = 50;
+
+        let playerX = canvas.width / 2 - playerWidth / 2;
+        let playerY = canvas.height - playerHeight - 10;
+        let playerSpeed = 5;
+
+        let bullets = [];
+        let enemies = [];
+        let score = 0;
+
+        let isGameOver = false;
+
+        // Movimentação do player
+        let leftPressed = false;
+        let rightPressed = false;
+
+        window.addEventListener("keydown", (e) => {
+            if (e.key === "ArrowLeft") leftPressed = true;
+            if (e.key === "ArrowRight") rightPressed = true;
+            if (e.key === " " && !isGameOver) fireBullet(); // Espaço para atirar
+        });
+
+        window.addEventListener("keyup", (e) => {
+            if (e.key === "ArrowLeft") leftPressed = false;
+            if (e.key === "ArrowRight") rightPressed = false;
+        });
+
+        // Função de criação de inimigos
+        function createEnemy() {
+            const x = Math.random() * (canvas.width - enemyWidth);
+            const y = -enemyHeight;
+            enemies.push({ x, y, speed: Math.random() * 2 + 1 });
+        }
+
+        // Função de movimentação dos inimigos
+        function moveEnemies() {
+            for (let i = 0; i < enemies.length; i++) {
+                enemies[i].y += enemies[i].speed;
+                if (enemies[i].y > canvas.height) {
+                    enemies.splice(i, 1);
+                    score -= 1; // Diminui os pontos se o inimigo passar
+                    i--;
+                }
+            }
+        }
+
+        // Função para desenhar o jogador
+        function drawPlayer() {
+            ctx.fillStyle = "#00FF00";
+            ctx.fillRect(playerX, playerY, playerWidth, playerHeight);
+        }
+
+        // Função de atirar
+        function fireBullet() {
+            bullets.push({
+                x: playerX + playerWidth / 2 - bulletWidth / 2,
+                y: playerY,
+                speed: 7
+            });
+        }
+
+        // Função de movimentação dos tiros
+        function moveBullets() {
+            for (let i = 0; i < bullets.length; i++) {
+                bullets[i].y -= bullets[i].speed;
+                if (bullets[i].y < 0) {
+                    bullets.splice(i, 1);
+                    i--;
+                }
+            }
+        }
+
+        // Função de detecção de colisões
+        function checkCollisions() {
+            for (let i = 0; i < enemies.length; i++) {
+                for (let j = 0; j < bullets.length; j++) {
+                    if (bullets[j].x < enemies[i].x + enemyWidth &&
+                        bullets[j].x + bulletWidth > enemies[i].x &&
+                        bullets[j].y < enemies[i].y + enemyHeight &&
+                        bullets[j].y + bulletHeight > enemies[i].y) {
+                        enemies.splice(i, 1);
+                        bullets.splice(j, 1);
+                        score += 1;
+                        i--;
+                        break;
+                    }
+                }
+
+                if (enemies[i].x < playerX + playerWidth &&
+                    enemies[i].x + enemyWidth > playerX &&
+                    enemies[i].y < playerY + playerHeight &&
+                    enemies[i].y + enemyHeight > playerY) {
+                    isGameOver = true;
+                    document.getElementById("game-over").style.display = "block";
+                    return;
+                }
+            }
+        }
+
+        // Função de desenho dos inimigos
+        function drawEnemies() {
+            ctx.fillStyle = "#FF0000";
+            for (let i = 0; i < enemies.length; i++) {
+                ctx.fillRect(enemies[i].x, enemies[i].y, enemyWidth, enemyHeight);
+            }
+        }
+
+        // Função de desenhar os tiros
+        function drawBullets() {
+            ctx.fillStyle = "#FFFF00";
+            for (let i = 0; i < bullets.length; i++) {
+                ctx.fillRect(bullets[i].x, bullets[i].y, bulletWidth, bulletHeight);
+            }
+        }
+
+        // Função de desenhar a tela
+        function draw() {
+            if (isGameOver) return;
+
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            drawPlayer();
+            drawEnemies();
+            drawBullets();
+
+            // Atualiza a posição do player
+            if (leftPressed && playerX > 0) playerX -= playerSpeed;
+            if (rightPressed && playerX < canvas.width - playerWidth) playerX += playerSpeed;
+
+            moveEnemies();
+            moveBullets();
+            checkCollisions();
+
+            // Atualiza o placar
+            document.getElementById("score").innerText = `Pontos: ${score}`;
+
+            requestAnimationFrame(draw);
+        }
+
+        // Função que inicializa o jogo
+        function startGame() {
+            setInterval(createEnemy, 1000);  // Cria inimigos a cada segundo
+            draw();
+        }
+
+        startGame();
+    </script>
+
+</body>
+</html>
